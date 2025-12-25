@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Entity(name="users")
 @Data
@@ -19,6 +20,14 @@ public class Users {
     @OneToOne
     @JoinColumn(name = "role_id")
     private Roles roles;
+
+    @OneToMany
+    @JoinColumn(name = "id")
+    private List<LoginInfo> loginInfo;
+
+    @OneToOne
+    @JoinColumn(name="id")
+    private UserAuth userAuth;
 
     @Column(name="first_name")
     private String firstName;
