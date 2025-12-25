@@ -7,7 +7,7 @@ import lombok.NoArgsConstructor;
 
 
 
-@Entity(name="user_roles")
+@Entity(name="roles")
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
@@ -16,13 +16,7 @@ public class Roles {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private int roleId;
 
-
-    public enum Role{
-        ADMIN,MANAGER,USER
-    }
-
-    @Enumerated(EnumType.STRING)
     @Column(name = "role")
-    private Role role;
+    private String role;
 
 }
