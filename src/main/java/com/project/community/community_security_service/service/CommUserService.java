@@ -9,8 +9,6 @@ import com.project.community.community_security_service.repository.CommUserAuthR
 import com.project.community.community_security_service.repository.CommUserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Bean;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -33,10 +31,8 @@ public class CommUserService {
     @Value("${app.title}")
     private String appTitle;
 
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
-    }
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
 
     public void registerUser(UserDTO userDTO){
@@ -55,8 +51,7 @@ public class CommUserService {
         UserAuth userAuth = new UserAuth();
         userAuth.setUser(user);
         userAuth.setUsername(userDTO.getUsername());
-        PasswordEncoder passEncoder = passwordEncoder();
-        userAuth.setPassword(passEncoder.encode(userDTO.getPassword()));
+        userAuth.setPassword(passwordEncoder.encode(userDTO.getPassword()));
         userAuth.setCreatedBy(appTitle);
         userAuth.setCreatedTimestamp(dt);
         commUserAuthRepository.save(userAuth);
