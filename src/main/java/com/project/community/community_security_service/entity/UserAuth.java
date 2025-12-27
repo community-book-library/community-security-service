@@ -6,7 +6,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 @Entity(name="user_auth")
 @Data
@@ -21,13 +20,19 @@ public class UserAuth {
     @JoinColumn(name="user_id")
     private Users user;
 
-    @OneToMany
-    @JoinColumn(name="login_info_id")
-    private List<LoginInfo> loginInfo;
-
-
     private String username;
     private String password;
+
+    public enum LoginStatus{
+        CREATED, LOCKED, ACTIVE, DISABLED
+    }
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "login_status")
+    private LoginStatus loginStatus;
+
+    @Column(name = "invalid_login_attempt")
+    private int inValidLoginAttempt;
 
     @Column(name="created_by")
     private String createdBy;

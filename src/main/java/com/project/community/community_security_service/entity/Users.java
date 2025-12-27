@@ -6,7 +6,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 @Entity(name="users")
 @Data
@@ -21,9 +20,6 @@ public class Users {
     @JoinColumn(name = "role_id")
     private Roles roles;
 
-    @OneToMany
-    @JoinColumn(name = "id")
-    private List<LoginInfo> loginInfo;
 
     @OneToOne
     @JoinColumn(name="id")
@@ -34,6 +30,9 @@ public class Users {
 
     @Column(name="last_name")
     private String lastName;
+
+    @Column(name="email")
+    private String email;
 
     @Column(name="created_by")
     private String createdBy;
