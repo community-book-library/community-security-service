@@ -34,7 +34,6 @@ public class CommUserService {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
-
     public void registerUser(UserDTO userDTO){
         Users user = new Users();
 
@@ -43,6 +42,7 @@ public class CommUserService {
                 .filter(r -> r.getRole().equals("USER")).findFirst().get();
         user.setFirstName(userDTO.getFirstName());
         user.setLastName(userDTO.getLastName());
+        user.setEmail(userDTO.getEmail());
         user.setCreatedBy(appTitle);
         LocalDateTime dt = LocalDateTime.now();
         user.setCreatedTimestamp(dt);
@@ -52,6 +52,8 @@ public class CommUserService {
         userAuth.setUser(user);
         userAuth.setUsername(userDTO.getUsername());
         userAuth.setPassword(passwordEncoder.encode(userDTO.getPassword()));
+        userAuth.setLoginStatus(UserAuth.LoginStatus.CREATED);
+        userAuth.setInValidLoginAttempt(0);
         userAuth.setCreatedBy(appTitle);
         userAuth.setCreatedTimestamp(dt);
         commUserAuthRepository.save(userAuth);

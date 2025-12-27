@@ -1,6 +1,5 @@
 package com.project.community.community_security_service.service;
 
-import com.project.community.community_security_service.entity.LoginInfo;
 import com.project.community.community_security_service.entity.Roles;
 import com.project.community.community_security_service.entity.UserAuth;
 import com.project.community.community_security_service.entity.Users;
@@ -16,21 +15,23 @@ public class CommUserDetails implements UserDetails {
     private String password;
     private Users user;
     private boolean enabled;
-    private List<LoginInfo> loginInfo;
     private Collection<? extends GrantedAuthority> authorities;
 
     public CommUserDetails(UserAuth userAuth) {
         this.username = userAuth.getUsername();
         this.password = userAuth.getPassword();
         this.user = userAuth.getUser();
-        this.loginInfo = userAuth.getLoginInfo();
         this.enabled = true;
+    }
+
+    public Users getUser() {
+        return user;
     }
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         Roles role = user.getRoles();
-        SimpleGrantedAuthority authority = new SimpleGrantedAuthority("ROLE_" + role);
+        SimpleGrantedAuthority authority = new SimpleGrantedAuthority("ROLE_" + role.getRole());
         return List.of(authority);
     }
 
