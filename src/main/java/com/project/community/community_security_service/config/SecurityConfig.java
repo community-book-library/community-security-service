@@ -35,7 +35,7 @@ public class SecurityConfig {
                 // Configure endpoint authorization
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/auth/register", "/auth/login" ).permitAll()
-                        .requestMatchers("/auth/send-otp", "/auth/verify-otp").hasRole("ROLE_USER")
+                        .requestMatchers("/auth/send-otp", "/auth/verify-otp").hasRole("USER")
                         .anyRequest().authenticated()
                 )
                 // Stateless session (required for JWT)
