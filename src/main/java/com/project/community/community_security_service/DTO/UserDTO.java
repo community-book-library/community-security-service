@@ -24,4 +24,6 @@ public class UserDTO {
     @NotBlank
     private String email;
 
+    private String role;
+
 }
