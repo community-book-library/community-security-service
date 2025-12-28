@@ -13,7 +13,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 @Service
 public class CommUserService {
@@ -34,20 +33,25 @@ public class CommUserService {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
-    public void registerUser(UserDTO userDTO){
+    public Users registerUser(UserDTO userDTO){
         Users user = new Users();
-
-        List<Roles> roles = commRoleRepository.findAll();
-        Roles role = roles.stream()
-                .filter(r -> r.getRole().equals("USER")).findFirst().get();
         user.setFirstName(userDTO.getFirstName());
         user.setLastName(userDTO.getLastName());
         user.setEmail(userDTO.getEmail());
         user.setCreatedBy(appTitle);
         LocalDateTime dt = LocalDateTime.now();
         user.setCreatedTimestamp(dt);
+        Roles role = new Roles();
+        if(userDTO.getRole() == null){
+            role.setRoleId(1);
+            role.setRole("USER");
+        }
+        else{
+            role.setRoleId(3);
+            role.setRole("MANAGER");
+        }
         user.setRoles(role);
-        commUserRepository.save(user);
+        Users response = commUserRepository.save(user);
         UserAuth userAuth = new UserAuth();
         userAuth.setUser(user);
         userAuth.setUsername(userDTO.getUsername());
@@ -57,5 +61,6 @@ public class CommUserService {
         userAuth.setCreatedBy(appTitle);
         userAuth.setCreatedTimestamp(dt);
         commUserAuthRepository.save(userAuth);
+        return response;
     }
 }
