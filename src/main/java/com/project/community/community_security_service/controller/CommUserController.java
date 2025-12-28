@@ -55,8 +55,8 @@ public class CommUserController {
 
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody UserDTO userDTO){
-        commUserService.registerUser(userDTO);
-        return ResponseEntity.status(HttpStatus.CREATED).body("user created");
+        Users user = commUserService.registerUser(userDTO);
+        return ResponseEntity.status(HttpStatus.CREATED).body(user);
     }
 
     @PostMapping("/login")
