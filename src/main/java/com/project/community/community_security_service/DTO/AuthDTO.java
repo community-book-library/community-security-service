@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class AuthDTO {
+    //Arun: package name cannot be upper case
     private String username;
     private String password;
 }

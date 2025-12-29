@@ -29,6 +29,7 @@ import java.time.LocalDateTime;
 @RequestMapping("/auth")
 public class CommUserController {
 
+    //Change all Autowired to constructor injection with lombok RequiredArgsConstructor
     @Autowired
     private UserDetailsService userDetailsService;
 
@@ -55,6 +56,7 @@ public class CommUserController {
 
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody UserDTO userDTO){
+        //Arun: handle exceptions
         Users user = commUserService.registerUser(userDTO);
         return ResponseEntity.status(HttpStatus.CREATED).body(user);
     }

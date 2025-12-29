@@ -9,6 +9,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class UserDTO {
+    //Arun: are we using common library here - if not use it and delete these classes from this project
     @NotBlank
     private String firstName;
 

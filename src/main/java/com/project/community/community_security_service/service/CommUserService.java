@@ -33,7 +33,9 @@ public class CommUserService {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    //Arun: look for @Transactional annoation to define transaction boundary
     public Users registerUser(UserDTO userDTO){
+        //Arun: use builder pattern to build users may be
         Users user = new Users();
         user.setFirstName(userDTO.getFirstName());
         user.setLastName(userDTO.getLastName());
@@ -41,6 +43,8 @@ public class CommUserService {
         user.setCreatedBy(appTitle);
         LocalDateTime dt = LocalDateTime.now();
         user.setCreatedTimestamp(dt);
+
+        //Arun: shouldnt these come from DB? think of caching this Role object once and reuse
         Roles role = new Roles();
         if(userDTO.getRole() == null){
             role.setRoleId(1);
@@ -53,10 +57,13 @@ public class CommUserService {
         user.setRoles(role);
         Users response = commUserRepository.save(user);
         UserAuth userAuth = new UserAuth();
+
+        //Arun: You are setting user instead of response in next line, shouldnt it be response?
         userAuth.setUser(user);
         userAuth.setUsername(userDTO.getUsername());
         userAuth.setPassword(passwordEncoder.encode(userDTO.getPassword()));
         userAuth.setLoginStatus(UserAuth.LoginStatus.CREATED);
+        //Arun: adding DB default will not require attempt to be set here while first time inserting row
         userAuth.setInValidLoginAttempt(0);
         userAuth.setCreatedBy(appTitle);
         userAuth.setCreatedTimestamp(dt);
