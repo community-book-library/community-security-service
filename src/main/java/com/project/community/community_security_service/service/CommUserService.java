@@ -1,6 +1,6 @@
 package com.project.community.community_security_service.service;
 
-import com.project.community.community_security_service.DTO.UserDTO;
+import com.project.community.community_security_service.dto.UserDTO;
 import com.project.community.community_security_service.entity.Roles;
 import com.project.community.community_security_service.entity.UserAuth;
 import com.project.community.community_security_service.entity.Users;
@@ -53,7 +53,7 @@ public class CommUserService {
         user.setRoles(role);
         Users response = commUserRepository.save(user);
         UserAuth userAuth = new UserAuth();
-        userAuth.setUser(user);
+        userAuth.setUser(response);
         userAuth.setUsername(userDTO.getUsername());
         userAuth.setPassword(passwordEncoder.encode(userDTO.getPassword()));
         userAuth.setLoginStatus(UserAuth.LoginStatus.CREATED);
