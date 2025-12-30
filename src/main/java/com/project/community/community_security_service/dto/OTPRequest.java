@@ -1,4 +1,4 @@
-package com.project.community.community_security_service.DTO;
+package com.project.community.community_security_service.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;

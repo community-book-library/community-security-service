@@ -1,6 +1,6 @@
 package com.project.community.community_security_service.controller;
 
-import com.project.community.community_security_service.DTO.*;
+import com.project.community.community_security_service.dto.*;
 import com.project.community.community_security_service.entity.UserAuth;
 import com.project.community.community_security_service.entity.Users;
 import com.project.community.community_security_service.repository.CommUserAuthRepository;
