@@ -1,18 +1,12 @@
 package com.project.community.community_security_service.service;
 
 import com.project.community.community_security_service.dto.UserDTO;
-import com.project.community.community_security_service.entity.Roles;
-import com.project.community.community_security_service.entity.UserAuth;
-import com.project.community.community_security_service.entity.Users;
-import com.project.community.community_security_service.repository.CommRoleRepository;
-import com.project.community.community_security_service.repository.CommUserAuthRepository;
-import com.project.community.community_security_service.repository.CommUserRepository;
+import com.project.community.community_security_service.entity.*;
+import com.project.community.community_security_service.repository.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-
-import java.time.LocalDateTime;
 
 @Service
 public class CommUserService {
@@ -33,34 +27,37 @@ public class CommUserService {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    @Autowired
+    private RegisterTokenRepository registerTokenRepository;
+
+    @Autowired
+    private CommUserRoleRepository commUserRoleRepository;
+
     public Users registerUser(UserDTO userDTO){
         Users user = new Users();
+        RegisterToken reg = registerTokenRepository.findByToken(userDTO.getToken());
         user.setFirstName(userDTO.getFirstName());
         user.setLastName(userDTO.getLastName());
-        user.setEmail(userDTO.getEmail());
+        user.setEmail(reg.getUsername());
         user.setCreatedBy(appTitle);
-        LocalDateTime dt = LocalDateTime.now();
-        user.setCreatedTimestamp(dt);
-        Roles role = new Roles();
-        if(userDTO.getRole() == null){
-            role.setRoleId(1);
-            role.setRole("USER");
-        }
-        else{
-            role.setRoleId(3);
-            role.setRole("MANAGER");
-        }
+        Roles role = commRoleRepository.findById(reg.getRoleId()).get();
         user.setRoles(role);
         Users response = commUserRepository.save(user);
         UserAuth userAuth = new UserAuth();
         userAuth.setUser(response);
-        userAuth.setUsername(userDTO.getUsername());
+        userAuth.setUsername(reg.getUsername());
         userAuth.setPassword(passwordEncoder.encode(userDTO.getPassword()));
         userAuth.setLoginStatus(UserAuth.LoginStatus.CREATED);
         userAuth.setInValidLoginAttempt(0);
         userAuth.setCreatedBy(appTitle);
-        userAuth.setCreatedTimestamp(dt);
-        commUserAuthRepository.save(userAuth);
+        UserAuth authresponse = commUserAuthRepository.save(userAuth);
+        UserCommunityRole userCommunityRole = new UserCommunityRole();
+        userCommunityRole.setUserId(response.getId());
+        userCommunityRole.setRoleId(reg.getRoleId());
+        userCommunityRole.setCommunityId(reg.getCommunityId());
+        userCommunityRole.setCreatedBy(appTitle);
+        reg.setStatus("USED");
+        commUserRoleRepository.save(userCommunityRole);
         return response;
     }
 }
