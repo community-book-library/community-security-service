@@ -23,8 +23,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.time.LocalDateTime;
-
 @RestController
 @RequestMapping("/auth")
 public class CommUserController {
@@ -136,8 +134,6 @@ public class CommUserController {
 
         UserAuth userAuth = commUserAuthRepository.findByUsername(userDetails.getUsername());
         userAuth.setLoginStatus(UserAuth.LoginStatus.ACTIVE);
-        LocalDateTime dt = LocalDateTime.now();
-        userAuth.setUpdatedTimestamp(dt);
         userAuth.setUpdatedBy(appTitle);
         commUserAuthRepository.save(userAuth);
 
