@@ -5,8 +5,6 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
-
 @Entity(name="users")
 @Data
 @AllArgsConstructor
@@ -19,7 +17,6 @@ public class Users {
     @OneToOne
     @JoinColumn(name = "role_id")
     private Roles roles;
-
 
     @OneToOne
     @JoinColumn(name="id")
@@ -40,9 +37,4 @@ public class Users {
     @Column(name="updated_by")
     private String updatedBy;
 
-    @Column(name="created_timestamp")
-    private LocalDateTime createdTimestamp;
-
-    @Column(name="updated_timestamp")
-    private LocalDateTime updatedTimestamp;
 }
