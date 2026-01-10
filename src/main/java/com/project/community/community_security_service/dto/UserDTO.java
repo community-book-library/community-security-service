@@ -16,14 +16,11 @@ public class UserDTO {
     private String lastName;
 
     @NotBlank
-    private String username;
-
-    @NotBlank
     private String password;
 
     @NotBlank
-    private String email;
+    private String token;
 
-    private String role;
+
 
 }
