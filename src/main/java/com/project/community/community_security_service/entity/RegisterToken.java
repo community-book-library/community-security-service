@@ -31,4 +31,10 @@ public class RegisterToken {
 
     @Column(name="role_id")
     private int roleId;
+
+    @Column(name = "created_by", nullable = false)
+    private String createdBy;
+
+    @Column(name = "updated_by")
+    private String updatedBy;
 }
