@@ -1,22 +1,21 @@
 package com.project.community.community_security_service.controller;
 
 import com.project.community.community_security_service.dto.*;
-import com.project.community.community_security_service.entity.UserAuth;
 import com.project.community.community_security_service.entity.Users;
 import com.project.community.community_security_service.repository.CommUserAuthRepository;
 import com.project.community.community_security_service.service.*;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.LockedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -53,96 +52,176 @@ public class CommUserController {
 
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody UserDTO userDTO){
+        if(commUserService.findByUsername(userDTO)){
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("User already registered");
+        }
         Users user = commUserService.registerUser(userDTO);
-        return ResponseEntity.status(HttpStatus.CREATED).body(user);
+        return ResponseEntity.status(HttpStatus.CREATED).body("User is registered with " +user.getId());
+    }
+
+    @PostMapping("/admin")
+    public ResponseEntity<?> adminLogin(@RequestBody AuthDTO authDTO){
+        Authentication authentication =authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(authDTO.getUsername(),authDTO.getPassword()));
+        String token = jwtService.generateToken(authDTO.getUsername(),false);
+        return ResponseEntity.status(HttpStatus.OK).body(new AuthResponse(token,"Valid admin login"));
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> generateToken(@RequestBody AuthDTO authDTO){
+    public ResponseEntity<LoginResponse> generateToken(@RequestBody AuthDTO authDTO){
         try{
-            Authentication authentication =authenticationManager.authenticate(
+            Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(authDTO.getUsername(),authDTO.getPassword()));
-            String token = jwtService.generateToken((UserDetails) authentication.getPrincipal());
-            HttpHeaders headers =  new HttpHeaders();
-            headers.add("Authorization", "Bearer " + token);
-            return ResponseEntity.ok().headers(headers).body(new AuthResponse(token,"Login successful"));
+            CommUserDetails userDetails = ((CommUserDetails) authentication.getPrincipal());
+
+                // Generate OTP
+            String otp = otpService.generateOtp(userDetails.getUsername());
+            if ("EMAIL".equals(userDetails.getMfaMethod())) {
+                    emailService.sendOtpEmail(
+                            userDetails.getUsername(),
+                            otp
+                    );
+                }
+                // Generate temporary token
+            String tempToken = jwtService.generateTempToken(userDetails.getUsername());
+            return ResponseEntity.ok(new LoginResponse(
+                        null,
+                        "OTP sent to your " + userDetails.getMfaMethod().toLowerCase() +
+                                ". Please verify to complete login.",
+                        true,
+                        userDetails.getUsername(),
+                        tempToken,
+                        userDetails.getMfaMethod()
+                ));
         }
         catch(AuthenticationException e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid Username or password");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new LoginResponse(
+                    null,
+                    "Invalid username or password",
+                    false,
+                    null,
+                    null,
+                    null
+            ));
         }
     }
 
-    @PostMapping("/send-otp")
-    public ResponseEntity<?> sendOtp(@Valid @RequestBody OTPRequest request) {
+    /**
+     * Resend OTP
+     */
+    @PostMapping("/resend-otp")
+    public ResponseEntity<LoginResponse> resendOtp(@Valid HttpServletRequest request) {
         try {
-            String otpSendType = request.getOtpSendType();
-            var authToken = SecurityContextHolder.getContext().getAuthentication();
+            final String authHeader = request.getHeader("Authorization");
+            final String jwt = authHeader.substring(7);
+            String username = jwtService.extractUsername(jwt);
+            CommUserDetails userDetails = (CommUserDetails) userDetailsService.loadUserByUsername(username);
 
-            if(authToken == null){
-                return ResponseEntity.badRequest().body(new OTPResponse("Invalid JWT Token", false, 300L));
+            if(otpService.otpExists(userDetails.getUsername())){
+                otpService.deleteOtp(userDetails.getUsername());
             }
 
-            CommUserDetails userDetails = (CommUserDetails) authToken.getPrincipal();
-            Users user = userDetails.getUser();
-            String email = otpSendType.toUpperCase().equals("EMAIL") ? user.getEmail() : "";
+            // Generate new OTP
+            String otp = otpService.generateOtp(userDetails.getUsername());
 
-            // Check if OTP already exists (rate limiting)
-            if (otpService.otpExists(email)) {
-                Long remainingTime = otpService.getOtpRemainingTime(email);
-                return ResponseEntity.badRequest()
-                        .body(new OTPResponse(
-                                    "OTP already sent. Please wait before requesting a new one.",
-                                    false,
-                                    remainingTime
-                        ));
+            // Send OTP
+            if ("EMAIL".equals(userDetails.getMfaMethod())) {
+                emailService.sendOtpEmail(userDetails.getUsername(),  otp);
             }
 
-            // Generate OTP
-            String otp = otpService.generateOtp(email);
-
-            // Send email
-            emailService.sendHtmlOtpEmail(email, otp);
-
-            return ResponseEntity.ok(new OTPResponse(
-                    "OTP sent successfully to " + email,
+            return ResponseEntity.ok(new LoginResponse(
+                    null,
+                    "OTP resent to your " + userDetails.getMfaMethod().toLowerCase() +
+                            ". Please verify again to complete login.",
                     true,
-                    300L // 5 minutes
+                    userDetails.getUsername(),
+                    jwt,
+                    userDetails.getMfaMethod()
             ));
 
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(new OTPResponse("Failed to send OTP: " + e.getMessage(), false, null));
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new LoginResponse(
+                    null,
+                    "Internal server error",
+                    false,
+                    null,
+                    null,
+                    null
+            ));
         }
     }
+
+
+
 
     /**
      * Verify OTP
      */
     @PostMapping("/verify-otp")
-    public ResponseEntity<?> verifyOtp(@Valid @RequestBody OTPVerification request) {
+    public ResponseEntity<LoginResponse> verifyOtp(@Valid @RequestBody MFAVerificationRequest request) {
 
-        String otp = request.getOtp();
-        var authToken = SecurityContextHolder.getContext().getAuthentication();
+        try {
+            // Validate temp token
+            String username = jwtService.extractUsername(request.getTempToken());
 
-        if(authToken == null){
-            return ResponseEntity.badRequest().body(new OTPResponse("Invalid JWT Token", false, 300L));
-        }
+            if (!jwtService.isTempToken(request.getTempToken())) {
+                return ResponseEntity.badRequest()
+                        .body(new LoginResponse(
+                                null,
+                                "Invalid temporary token",
+                                false,
+                                null,
+                                null,
+                                null
+                        ));
+            }
 
-        CommUserDetails userDetails = (CommUserDetails) authToken.getPrincipal();
-        Users user = userDetails.getUser();
-        String email = user.getEmail();
+            // Authenticate OTP
+            MFAAuthenticationToken mfaToken = new MFAAuthenticationToken(username, request.getOtp());
+            Authentication authentication = authenticationManager.authenticate(mfaToken);
 
-        UserAuth userAuth = commUserAuthRepository.findByUsername(userDetails.getUsername());
-        userAuth.setLoginStatus(UserAuth.LoginStatus.ACTIVE);
-        userAuth.setUpdatedBy(appTitle);
-        commUserAuthRepository.save(userAuth);
+            // Generate full access token
+            String token = jwtService.generateToken(username, true);
 
-        if (otpService.validateOtp(email, otp)) {
-            // OTP is valid - you can now authenticate the user or proceed with the action
-            return ResponseEntity.ok(new OTPResponse("OTP verified successfully", true, null));
-        } else {
-            return ResponseEntity.badRequest()
-                    .body(new OTPResponse("Invalid or expired OTP", false, null));
+            return ResponseEntity.ok(new LoginResponse(
+                    token,
+                    "OTP verification successful. Login complete.",
+                    false,
+                    username,
+                    null,
+                    null
+            ));
+
+        } catch (LockedException e) {
+            return ResponseEntity.status(HttpStatus.LOCKED)
+                    .body(new LoginResponse(
+                            null,
+                            e.getMessage(),
+                            false,
+                            null,
+                            null,
+                            null
+                    ));
+        } catch (BadCredentialsException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(new LoginResponse(
+                            null,
+                            e.getMessage(),
+                            false,
+                            null,
+                            null,
+                            null
+                    ));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new LoginResponse(
+                            null,
+                            "Verification failed: " + e.getMessage(),
+                            false,
+                            null,
+                            null,
+                            null
+                    ));
         }
     }
 
