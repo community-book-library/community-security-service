@@ -8,6 +8,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.Optional;
+
 @Service
 public class CommUserService {
 
@@ -35,7 +37,8 @@ public class CommUserService {
 
     public Users registerUser(UserDTO userDTO){
         Users user = new Users();
-        RegisterToken reg = registerTokenRepository.findByToken(userDTO.getToken());
+        String hashed = userDTO.getToken();
+        RegisterToken reg = registerTokenRepository.findByToken(hashed).get();
         user.setFirstName(userDTO.getFirstName());
         user.setLastName(userDTO.getLastName());
         user.setEmail(reg.getUsername());
@@ -57,7 +60,19 @@ public class CommUserService {
         userCommunityRole.setCommunityId(reg.getCommunityId());
         userCommunityRole.setCreatedBy(appTitle);
         reg.setStatus("USED");
+        reg.setUpdatedBy(appTitle);
         commUserRoleRepository.save(userCommunityRole);
         return response;
+    }
+
+    public boolean findByUsername(UserDTO userDTO) {
+        String hashed = userDTO.getToken();
+        Optional<RegisterToken> regToken = registerTokenRepository.findByToken(hashed);
+        if(!regToken.isPresent()){
+            return false;
+        }
+        RegisterToken reg = regToken.get();
+        Optional<Users> user =  commUserRepository.findByEmail(reg.getUsername());
+        return user.isPresent();
     }
 }

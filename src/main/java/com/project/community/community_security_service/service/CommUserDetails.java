@@ -15,12 +15,16 @@ public class CommUserDetails implements UserDetails {
     private String password;
     private Users user;
     private boolean enabled;
+    private final boolean mfaEnabled;
+    private final String mfaMethod;
     private Collection<? extends GrantedAuthority> authorities;
 
     public CommUserDetails(UserAuth userAuth) {
         this.username = userAuth.getUsername();
         this.password = userAuth.getPassword();
         this.user = userAuth.getUser();
+        this.mfaEnabled = userAuth.isMfaEnabled();
+        this.mfaMethod = userAuth.getMfaMethod();
         this.enabled = true;
     }
 
@@ -63,5 +67,13 @@ public class CommUserDetails implements UserDetails {
     @Override
     public boolean isEnabled() {
         return enabled;
+    }
+
+    public String getMfaMethod() {
+        return mfaMethod;
+    }
+
+    public boolean isMfaEnabled() {
+        return mfaEnabled;
     }
 }
