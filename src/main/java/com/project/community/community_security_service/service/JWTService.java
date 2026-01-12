@@ -23,17 +23,25 @@ public class JWTService {
     @Value("${jwt.expiration}")
     private long jwtExpiration; // in milliseconds
 
-    public String generateToken(UserDetails userDetails) {
+    public String generateToken(String username, boolean mfaVerified) {
         Map<String, Object> claims = new HashMap<>();
-        return createToken(claims, userDetails.getUsername());
+        claims.put("mfaVerified", mfaVerified);
+        return createToken(claims, username, jwtExpiration);
     }
 
-    private String createToken(Map<String, Object> claims, String subject) {
+    public String generateTempToken(String username) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("tempToken", true);
+        claims.put("mfaVerified", false);
+        return createToken(claims, username, jwtExpiration);
+    }
+
+    private String createToken(Map<String, Object> claims, String subject,Long validity) {
         return Jwts.builder()
                 .claims(claims)
                 .subject(subject)
                 .issuedAt(new Date())
-                .expiration(new Date(System.currentTimeMillis() + jwtExpiration))
+                .expiration(new Date(System.currentTimeMillis() + validity))
                 .signWith(getSignKey())
                 .compact();
     }
@@ -59,6 +67,17 @@ public class JWTService {
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
+    }
+
+    public boolean extractMfaVerified(String token) {
+        Claims claims = extractAllClaims(token);
+        return claims.get("mfaVerified", Boolean.class);
+    }
+
+    public boolean isTempToken(String token) {
+        Claims claims = extractAllClaims(token);
+        Boolean isTemp = claims.get("tempToken", Boolean.class);
+        return isTemp != null && isTemp;
     }
 
     public boolean isTokenValid(String token, UserDetails userDetails) {
