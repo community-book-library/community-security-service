@@ -1,12 +1,13 @@
-package com.project.community.community_security_service.service;
+package com.project.community.security.service;
 
-import com.project.community.community_security_service.dto.UserDTO;
-import com.project.community.community_security_service.entity.*;
-import com.project.community.community_security_service.repository.*;
+import com.project.community.common.library.entity.*;
+import com.project.community.common.library.repository.*;
+import com.project.community.security.dto.UserDTO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 
@@ -35,16 +36,30 @@ public class CommUserService {
     @Autowired
     private CommUserRoleRepository commUserRoleRepository;
 
-    public Users registerUser(UserDTO userDTO){
+    @Transactional
+    public Users registerUser(UserDTO userDTO,String username) throws Exception {
         Users user = new Users();
         String hashed = userDTO.getToken();
-        RegisterToken reg = registerTokenRepository.findByToken(hashed).get();
+        Optional<RegisterToken> regis = registerTokenRepository.findByUsername(username);
+        if(regis.isEmpty()){
+            throw new Exception("Invalid User - Registry Token not present");
+        }
+
+        RegisterToken reg = regis.get();
+        Optional<Roles> rol = commRoleRepository.findById(reg.getRoleId());
+        if(rol.isEmpty()){
+            throw new Exception("Invalid User - Role not present");
+        }
+
         user.setFirstName(userDTO.getFirstName());
         user.setLastName(userDTO.getLastName());
-        user.setEmail(reg.getUsername());
+        user.setEmail(username);
         user.setCreatedBy(appTitle);
-        Roles role = commRoleRepository.findById(reg.getRoleId()).get();
+
+
+        Roles role = rol.get();
         user.setRoles(role);
+
         Users response = commUserRepository.save(user);
         UserAuth userAuth = new UserAuth();
         userAuth.setUser(response);
@@ -53,6 +68,7 @@ public class CommUserService {
         userAuth.setLoginStatus(UserAuth.LoginStatus.CREATED);
         userAuth.setInValidLoginAttempt(0);
         userAuth.setCreatedBy(appTitle);
+
         UserAuth authresponse = commUserAuthRepository.save(userAuth);
         UserCommunityRole userCommunityRole = new UserCommunityRole();
         userCommunityRole.setUserId(response.getId());
@@ -65,14 +81,9 @@ public class CommUserService {
         return response;
     }
 
-    public boolean findByUsername(UserDTO userDTO) {
+    public boolean findByUsername(UserDTO userDTO,String username) {
         String hashed = userDTO.getToken();
-        Optional<RegisterToken> regToken = registerTokenRepository.findByToken(hashed);
-        if(!regToken.isPresent()){
-            return false;
-        }
-        RegisterToken reg = regToken.get();
-        Optional<Users> user =  commUserRepository.findByEmail(reg.getUsername());
+        Optional<Users> user = commUserRepository.findByEmail(username);
         return user.isPresent();
     }
 }
