@@ -1,9 +1,17 @@
-package com.project.community.community_security_service.controller;
+package com.project.community.security.controller;
 
-import com.project.community.community_security_service.dto.*;
-import com.project.community.community_security_service.entity.Users;
-import com.project.community.community_security_service.repository.CommUserAuthRepository;
-import com.project.community.community_security_service.service.*;
+import com.project.community.common.library.entity.RefreshToken;
+import com.project.community.common.library.entity.Users;
+import com.project.community.common.library.repository.CommUserAuthRepository;
+import com.project.community.common.library.repository.RefreshTokenRepository;
+import com.project.community.common.library.service.CommUserDetails;
+import com.project.community.common.library.service.EmailService;
+import com.project.community.common.library.service.JWTService;
+import com.project.community.common.library.service.RefreshTokenService;
+import com.project.community.security.dto.*;
+import com.project.community.security.service.CommUserService;
+import com.project.community.security.service.MFAAuthenticationToken;
+import com.project.community.security.service.OTPService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,13 +25,12 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.HashMap;
+import java.util.Map;
 
 @RestController
-@RequestMapping("/auth")
 public class CommUserController {
 
     @Autowired
@@ -47,15 +54,22 @@ public class CommUserController {
     @Autowired
     private CommUserAuthRepository commUserAuthRepository;
 
+    @Autowired
+    private RefreshTokenRepository refreshTokenRepository;
+
+
     @Value("${app.title}")
     private String appTitle;
 
-    @PostMapping("/register")
-    public ResponseEntity<?> register(@RequestBody UserDTO userDTO){
-        if(commUserService.findByUsername(userDTO)){
+    @Autowired
+    private RefreshTokenService refreshTokenService;
+
+    @PostMapping("/auth/register")
+    public ResponseEntity<?> register(@RequestBody UserDTO userDTO, @RequestHeader(value = "X-User-Email", required = false) String email) throws Exception {
+        if(commUserService.findByUsername(userDTO,email)){
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("User already registered");
         }
-        Users user = commUserService.registerUser(userDTO);
+        Users user = commUserService.registerUser(userDTO,email);
         return ResponseEntity.status(HttpStatus.CREATED).body("User is registered with " +user.getId());
     }
 
@@ -63,8 +77,13 @@ public class CommUserController {
     public ResponseEntity<?> adminLogin(@RequestBody AuthDTO authDTO){
         Authentication authentication =authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(authDTO.getUsername(),authDTO.getPassword()));
-        String token = jwtService.generateToken(authDTO.getUsername(),false);
-        return ResponseEntity.status(HttpStatus.OK).body(new AuthResponse(token,"Valid admin login"));
+        String accessToken = jwtService.generateAccessToken(authDTO.getUsername());
+        String refreshToken = jwtService.generateRefreshToken(authDTO.getUsername());
+        RefreshToken refToken = refreshTokenService.createRefreshToken(refreshToken, "m.sivasubramanian06@outlook.com");
+        Map<String, String> tokens = new HashMap<>();
+        tokens.put("accessToken", accessToken);
+        tokens.put("refreshToken", refreshToken);
+        return ResponseEntity.ok(tokens);
     }
 
     @PostMapping("/login")
@@ -84,6 +103,7 @@ public class CommUserController {
                 }
                 // Generate temporary token
             String tempToken = jwtService.generateTempToken(userDetails.getUsername());
+
             return ResponseEntity.ok(new LoginResponse(
                         null,
                         "OTP sent to your " + userDetails.getMfaMethod().toLowerCase() +
@@ -114,6 +134,7 @@ public class CommUserController {
         try {
             final String authHeader = request.getHeader("Authorization");
             final String jwt = authHeader.substring(7);
+
             String username = jwtService.extractUsername(jwt);
             CommUserDetails userDetails = (CommUserDetails) userDetailsService.loadUserByUsername(username);
 
@@ -180,11 +201,28 @@ public class CommUserController {
             MFAAuthenticationToken mfaToken = new MFAAuthenticationToken(username, request.getOtp());
             Authentication authentication = authenticationManager.authenticate(mfaToken);
 
-            // Generate full access token
-            String token = jwtService.generateToken(username, true);
+            CommUserDetails userDetails = (CommUserDetails) userDetailsService.loadUserByUsername(username);
+            Users user = userDetails.getUser();
+
+
+            String refreshToken = jwtService.generateRefreshToken(username);
+            RefreshToken refToken = refreshTokenService.createRefreshToken(refreshToken,username);
+            String accessToken = jwtService.generateAccessToken(username);
+
+            Map<String, String> tokens = new HashMap<>();
+            tokens.put("accessToken", accessToken);
+            tokens.put("refreshToken", refreshToken);
+
+//            ResponseCookie cookie = ResponseCookie.from("refreshToken", refreshToken)
+//                    .httpOnly(true)
+//                    .secure(true) // Only HTTPS in production
+//                    .path("/api/auth/refresh")
+//                    .maxAge(30 * 24 * 60 * 60) // 30 days
+//                    .sameSite("Strict")
+//                    .build();
 
             return ResponseEntity.ok(new LoginResponse(
-                    token,
+                    tokens,
                     "OTP verification successful. Login complete.",
                     false,
                     username,
@@ -225,7 +263,45 @@ public class CommUserController {
         }
     }
 
+    /**
+     * REFRESH endpoint - Returns new access token
+     */
+    @PostMapping("/refresh")
+    public ResponseEntity<?> refresh(
+            @RequestBody RefreshTokenRequest request) {
+        // Or get from cookie: @CookieValue("refreshToken") String refreshToken
 
+        try{
+            RefreshToken validRefreshToken = refreshTokenService.verifyRefreshToken(request.getRefreshToken());
+            String username = jwtService.extractUsername(request.getRefreshToken());
+            String accessToken = jwtService.generateAccessToken(username);
+            return ResponseEntity.ok(accessToken);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+
+    }
+
+    /**
+     * LOGOUT endpoint - Revoke refresh token
+     */
+    @PostMapping("/logout")
+    public ResponseEntity<?> logout(
+            @RequestBody RefreshTokenRequest request) {
+
+        refreshTokenService.revokeRefreshToken(request.getRefreshToken());
+
+//        // Clear cookie
+//        ResponseCookie cookie = ResponseCookie.from("refreshToken", "")
+//                .httpOnly(true)
+//                .secure(true)
+//                .path("/api/auth/refresh")
+//                .maxAge(0)
+//                .build();
+
+        return ResponseEntity.ok()
+                .body("Logged out successfully");
+    }
 
 
 }
