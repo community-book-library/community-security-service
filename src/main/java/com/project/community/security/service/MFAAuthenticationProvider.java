@@ -1,7 +1,7 @@
-package com.project.community.community_security_service.service;
+package com.project.community.security.service;
 
-import com.project.community.community_security_service.entity.UserAuth;
-import com.project.community.community_security_service.repository.CommUserAuthRepository;
+import com.project.community.common.library.entity.UserAuth;
+import com.project.community.common.library.repository.CommUserAuthRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.BadCredentialsException;

@@ -1,4 +1,4 @@
-package com.project.community.community_security_service.service;
+package com.project.community.security.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;

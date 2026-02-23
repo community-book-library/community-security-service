@@ -1,4 +1,4 @@
-package com.project.community.community_security_service.dto;
+package com.project.community.security.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
@@ -10,5 +10,8 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class OTPRequest {
     @NotBlank
-    private String otpSendType;
+    private String username;
+
+    @NotBlank
+    private String tempToken;
 }

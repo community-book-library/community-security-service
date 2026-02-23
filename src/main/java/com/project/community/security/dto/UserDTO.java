@@ -1,4 +1,4 @@
-package com.project.community.community_security_service.dto;
+package com.project.community.security.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
@@ -20,7 +20,5 @@ public class UserDTO {
 
     @NotBlank
     private String token;
-
-
 
 }

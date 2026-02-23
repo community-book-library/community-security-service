@@ -1,4 +1,4 @@
-package com.project.community.community_security_service.dto;
+package com.project.community.security.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
